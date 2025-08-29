@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Disable user scaling so that iOS doesn't pinch-zoom the entire page -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  
+  <!-- iOS PWA settings -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  
+  <!-- Theme color for Android/Chrome -->
+  <meta name="theme-color" content="#1d3557">
+  
+  <!-- Your external CSS for main styling -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Font Awesome for the Help icon -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+  />
+  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Jost:wght@500&display=swap"
+    rel="stylesheet"
+  >
+  
+  <link rel="manifest" href="manifest.json" />
+  <title>User Info</title>
+
+  <style>
+    /* Full-screen overlay that prompts user to add to Home Screen */
+    #install-instructions {
+      display: none;
+      position: fixed;
+      top: 0; 
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #1d3557;
+      color: #f1faee;
+      z-index: 999;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      box-sizing: border-box;
+      padding: 20px;
+    }
+    .install-content {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    .install-heading {
+      font-size: 1.6em;
+      margin-bottom: 20px;
+      font-weight: bold;
+    }
+    .install-text {
+      font-size: 1.2em;
+      margin-bottom: 120px;
+    }
+
+    /* Animated arrow pointing downward */
+    .arrow {
+      font-size: 3em;      /* bigger arrow */
+      margin: 20px auto;
+      animation: arrowBounce 1.5s infinite;
+      display: inline-block;
+    }
+    @keyframes arrowBounce {
+      0%   { transform: translateY(0); }
+      50%  { transform: translateY(10px); }
+      100% { transform: translateY(0); }
+    }
+
+    /* Hide normal content by default; unhide if in standalone mode */
+    #main-content {
+      display: none;
+    }
+
+    /* Header that accounts for safe-area, just like in your second page */
+    header {
+      width: 100%;
+      height: 100px;
+      background: #1d3557;
+      color: #f1faee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1em;
+      font-weight: bold;
+      position: fixed;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      padding-top: 0; /* We included safe-area in the height above */
+    }
+
+    /* Match new header height in form container, center content nicely */
+    .form-container {
+      margin-top: calc(80px + env(safe-area-inset-top));
+      width: 90%;
+      max-width: 400px;  /* narrower max-width so elements are truly centered */
+      display: flex;
+      flex-direction: column;
+      align-items: center;  /* center items horizontally */
+      justify-content: center;
+      text-align: center;   /* center text, buttons, etc. */
+      margin-left: auto; 
+      margin-right: auto;
+      /* height: ...  optionally set a min-height if you want more spacing */
+    }
+
+    /* Make sure the inputs and button are also centered in the container */
+    .form-container input,
+    .form-container button {
+      width: 100%;
+      max-width: 100%;  /* or remove this if you prefer a narrower input */
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1) Full-screen "Install" overlay. Only shown if not in standalone mode on iOS. -->
+  <div id="install-instructions">
+    <div class="install-content">
+      <div class="install-heading">Install This App</div>
+      <div class="install-text">
+        Tap the <strong>Share</strong> button below the address bar in your browser.
+      </div>
+
+      <div class="install-text">
+        ... then select <strong>"Add to Home Screen"</strong> to install.
+      </div>
+      <div class="arrow">⬇️</div>
+    </div>
+  </div>
+
+  <!-- 2) Normal App Content. Hidden by default until we detect standalone mode or non-iOS. -->
+  <div class="main" id="main-content">  
+    <header>
+      <h1 style="padding-top: 25px">Sign Up</h1>
+      <!-- Simple clickable text + icon in top-right corner -->
+      <div id="help-trigger" style="padding-top: 25px">
+        Help <i class="fa fa-info-circle" aria-hidden="true"></i>
+      </div>
+    </header>
+    <div class="form-container">
+      <form id="user-form">
+        <h2>Welcome</h2>
+        <input type="text" id="full-name" name="full-name" placeholder="Full Name" required />
+        <input type="email" id="email" name="email" placeholder="Email" required />
+        <input type="text" id="organization" name="organization" placeholder="University or Organization" required />
+        <button type="submit">Start Analysis!</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Help Modal (Slider) -->
+  <div id="help-modal">
+    <div class="help-content">
+      <!-- Slide 1 -->
+      <div class="help-slide active">
+        <h2>Welcome to Immuno Chroma</h2>
+        <p>Our sensor uses special color-shifting nanoparticles to detect antibodies linked to infectious diseases. 
+        Simply capture an image of the sensor, and Immuno Chroma quickly calculates the concentration—no big lab equipment needed!</p>
+      </div>
+      <!-- Slide 2 -->
+      <div class="help-slide">
+        <h2>How to Use Step 1</h2>
+        <p>Aluminum nanoparticles change color when they bind to specific proteins. By using your device camera, 
+        the app measures the color shift and determines the antibody concentration, helping you track infections 
+        rapidly and cost-effectively.</p>
+      </div>
+      <!-- Slide 3 -->
+      <div class="help-slide">
+      <h2>App Features</h2>
+      <p>
+        - Upload or snap a picture of your sensor. <br/>
+        - Choose and record reference points for accuracy. <br/>
+        - Instantly analyze results, export a PDF report, or share with others. <br/>
+        All in a user-friendly interface!
+      </p>
+      </div>
+      <!-- Controls -->
+      <div class="help-controls">
+        <button id="prev-btn">Previous</button>
+        <button id="next-btn">Next</button>
+        <button id="skip-btn">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/service-worker.js')
+        .then(() => console.log("Service Worker Registered"))
+        .catch((error) => console.error("Service Worker Registration Failed:", error));
+    }
+
+    // Simple form handler
+    const form = document.getElementById('user-form');
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const name = document.getElementById('full-name').value;
+      const email = document.getElementById('email').value;
+      const organization = document.getElementById('organization').value;
+      if (name && email && organization) {
+        // Go to next page
+        window.location.href = "imageUpload.html";
+      } else {
+        alert("Please enter all required details!");
+      }
+    });
+
+    // Show/hide "Install" instructions based on iOS standalone detection
+    document.addEventListener('DOMContentLoaded', () => {
+      if (("standalone" in window.navigator) && !window.navigator.standalone) {
+        // iOS Safari + not installed => show instructions
+        document.getElementById("install-instructions").style.display = "flex";
+        document.getElementById("main-content").style.display = "none";
+      } else {
+        // Already installed OR non-iOS => show main content
+        document.getElementById("install-instructions").style.display = "none";
+        document.getElementById("main-content").style.display = "block";
+
+        // Automatically show Help Modal on load
+        openHelpModal();
+      }
+    });
+
+    // ========== HELP MODAL & SLIDER LOGIC ==========
+    const helpTrigger = document.getElementById('help-trigger');
+    const helpModal = document.getElementById('help-modal');
+    const slides = document.querySelectorAll('.help-slide');
+    const prevBtn = document.getElementById('prev-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const skipBtn = document.getElementById('skip-btn');
+
+    let currentSlide = 0; // which slide is active
+
+    function showSlide(index) {
+      slides.forEach((slide, idx) => {
+        slide.classList.remove('active');
+        if (idx === index) {
+          slide.classList.add('active');
+        }
+      });
+    }
+
+    function openHelpModal() {
+      helpModal.classList.add('active');
+      currentSlide = 0;
+      showSlide(currentSlide);
+    }
+
+    function closeHelpModal() {
+      helpModal.classList.remove('active');
+    }
+
+    // Clicking top-right "Help" text/icon re-opens the modal
+    helpTrigger.addEventListener('click', openHelpModal);
+
+    // Next / Prev / Skip
+    nextBtn.addEventListener('click', () => {
+      if (currentSlide < slides.length - 1) {
+        currentSlide++;
+        showSlide(currentSlide);
+      } else {
+        closeHelpModal();
+      }
+    });
+
+    prevBtn.addEventListener('click', () => {
+      if (currentSlide > 0) {
+        currentSlide--;
+        showSlide(currentSlide);
+      }
+    });
+
+    skipBtn.addEventListener('click', closeHelpModal);
+  </script>
+</body>
+</html>

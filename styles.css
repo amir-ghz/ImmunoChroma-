@@ -1,0 +1,481 @@
+/* styles.css */
+/* General Styles */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Prevent scrolling */
+    font-family: 'Jost', sans-serif;
+    background: linear-gradient(to bottom, #457b9d, #1d3557);
+    color: #f1faee;
+}
+
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+/* Main container */
+.main {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start; /* Adjust for header */
+}
+
+/* Header */
+    header {
+      width: 100%;
+      height: 100px; /* increased from 80px */
+      background: #1d3557;
+      color: #f1faee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5em;
+      font-weight: bold;
+      position: fixed;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      padding-top: env(safe-area-inset-top);
+    }
+    .form-container {
+      margin-top: 110px; /* match the new header height */
+      text-align: center;
+      width: 90%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+/* Input styles */
+input {
+    width: 100%; /* Full width within the container */
+    margin: 15px 0;
+    padding: 15px;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1em;
+    outline: none;
+    background: #a8dadc;
+    color: #1d3557;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+input::placeholder {
+    color: #457b9d;
+}
+
+input:focus {
+    background-color: #f1faee;
+    transform: scale(1.02);
+}
+
+/* Button styles */
+button {
+    width: 100%;
+    padding: 15px;
+    margin: 10px 0;
+    border: none;
+    border-radius: 5px;
+    font-size: 1.1em;
+    font-weight: bold;
+    color: #f1faee;
+    background: #e63946;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover {
+    background: #a8dadc;
+    color: #1d3557;
+    transform: scale(1.05);
+}
+
+/* Upload Sections */
+.upload-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+/* Upload Buttons */
+.upload-button {
+    width: 100%;
+    height: 200px; /* Fixed height for better consistency */
+    margin: 20px 0;
+    background: #a8dadc;
+    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.upload-button:hover {
+    transform: scale(1.02);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.upload-button label {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #1d3557;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    cursor: pointer;
+}
+
+.upload-button .upload-icon {
+    font-size: 2.5em;
+    margin-bottom: 10px;
+}
+
+.upload-button img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 10px;
+    transition: opacity 0.3s;
+}
+
+/* Hide the file input */
+.upload-button input[type="file"] {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+/* Action Buttons */
+.upload-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.choose-point {
+    width: 48%;
+    padding: 10px;
+    font-size: 1em;
+    background: #1d3557;
+    border: none;
+    border-radius: 5px;
+    color: #f1faee;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.choose-point:hover {
+    background: #457b9d;
+    transform: scale(1.05);
+}
+
+/* RGB Display */
+.rgb-display {
+    margin-top: 10px;
+    font-size: 1em;
+    background: #f1faee;
+    color: #1d3557;
+    padding: 10px;
+    border-radius: 5px;
+    width: 100%;
+    text-align: center;
+}
+
+/* Analyze Button */
+#analyze {
+    background: #2a9d8f;
+}
+
+#analyze:hover {
+    background: #1d3557;
+    color: #f1faee;
+}
+
+/* Popup View */
+.popup-view {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 30;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out, visibility 0.3s;
+}
+
+.popup-view.active {
+    visibility: visible;
+    opacity: 1;
+}
+
+.popup-content {
+    background: #1d3557;
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    width: 100%;
+    height: 100%;
+    color: #f1faee;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    animation: fadeIn 0.3s ease-in-out;
+    box-sizing: border-box;
+    position: relative;
+}
+
+/* Image Container in Popup */
+.image-container {
+    position: relative;
+    width: 100%;
+    height: 80%;
+    overflow: hidden;
+    border-radius: 10px;
+    margin-bottom: 20px;
+}
+
+.popup-content img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+    display: block;
+    transition: transform 0.3s ease;
+    touch-action: none;
+}
+
+/* Popup Text */
+.popup-content p {
+    margin-bottom: 20px;
+    font-size: 1.2em;
+    font-weight: bold;
+}
+
+/* Popup Buttons */
+.popup-content button {
+    width: 100%;
+    padding: 10px 0;
+    font-size: 1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    background: #e63946;
+    color: #f1faee;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.popup-content button:hover {
+    background: #a8dadc;
+    color: #1d3557;
+    transform: scale(1.05);
+}
+
+/* Pointer Icon */
+.pointer-icon {
+    width: 20px;
+    height: 20px;
+    position: absolute;
+    border: 2px solid #e63946;
+    border-radius: 50%;
+    background: rgba(230, 57, 70, 0.5);
+    pointer-events: none;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    display: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .upload-button {
+        height: 150px;
+    }
+
+    .popup-content {
+        max-width: 100%;
+        height: 100%;
+    }
+
+    .image-container {
+        height: 75%;
+    }
+}
+
+@media (max-width: 480px) {
+    header {
+        font-size: 1.2em;
+        height: 60px;
+    }
+
+    .upload-button {
+        height: 120px;
+    }
+
+    .popup-content {
+        padding: 15px;
+    }
+
+    .popup-content p {
+        font-size: 1em;
+    }
+}
+
+
+
+
+/* ========== APPEND THESE STYLES AT THE VERY BOTTOM OF styles.css ========== */
+
+/* Make header position relative so we can place the help trigger at top-right */
+header {
+    position: relative;
+}
+
+/* Help Trigger (top-right corner) - Just text + icon, no big button styling */
+#help-trigger {
+    position: absolute;
+    right: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #f1faee;
+    font-weight: bold;
+    font-size: 1em;
+}
+
+/* Hover effect */
+#help-trigger:hover {
+    opacity: 0.8;
+}
+
+/* Help Modal Overlay */
+#help-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    z-index: 9999; /* Above everything else */
+    display: none; /* Hidden by default */
+    justify-content: center;
+    align-items: center;
+}
+
+/* Show/Hide via .active class */
+#help-modal.active {
+    display: flex;
+}
+
+/* Modal Content Container - made taller */
+.help-content {
+    background: #1d3557;
+    color: #f1faee;
+    padding: 20px;
+    border-radius: 10px;
+    width: 90%;
+    max-width: 500px;
+    box-sizing: border-box;
+    text-align: center;
+    animation: fadeIn 0.3s ease-in-out;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    /* Increase min-height so there's more vertical space for text */
+    min-height: 70vh;
+    /* In case content grows, allow scrolling within the modal */
+    overflow-y: auto;
+}
+
+/* Individual Slides */
+.help-slide {
+    display: none; /* hidden except the active one */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.help-slide.active {
+    display: flex;
+}
+
+/* Slide Headings and Text */
+.help-slide h2 {
+    margin-bottom: 10px;
+}
+
+.help-slide p {
+    margin-bottom: 20px;
+    line-height: 1.4em;
+}
+
+/* Controls (Next, Prev, Skip) */
+.help-controls {
+    display: flex;
+    gap: 10px;
+    width: 100%;
+    justify-content: center;
+    margin-top: 10px;
+}
+
+.help-controls button {
+    flex: 1 1 auto;
+    padding: 10px 0;
+    font-size: 1em;
+    border: none;
+    border-radius: 5px;
+    background: #e63946;
+    color: #f1faee;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.help-controls button:hover {
+    background: #a8dadc;
+    color: #1d3557;
+    transform: scale(1.05);
+}
+
+
+

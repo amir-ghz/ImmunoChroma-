@@ -1,0 +1,1946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="theme-color" content="#1d3557"/>
+  <title>Image Upload</title>
+  <!-- Global Styles -->
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Font Awesome for icons -->
+  <link
+    rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
+  />
+  <!-- Include Chart.js for visualizations -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+  <!-- Include jsPDF via CDN for exporting PDF -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <!-- Include D3-color for RGB to Lab conversion -->
+  <script src="https://d3js.org/d3-color.v2.min.js"></script>
+  <!-- Include OpenCV.js -->
+  <script async src="https://docs.opencv.org/4.10.0/opencv.js" onload="onOpenCvReady()" onerror="onOpenCvError()"></script>
+  <style>
+    /* ==================================
+       HEADER & LAYOUT ADJUSTMENTS
+    ================================== */
+    header {
+      position: relative;
+      width: 100%;
+      height: 100px;
+      background: #1d3557;
+      color: #f1faee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1em;
+      font-weight: bold;
+      position: fixed;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      padding-top: env(safe-area-inset-top);
+    }
+    /* Settings icon at top-left, no text */
+    #settingsIcon {
+      position: absolute;
+      left: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.4em;
+      color: #f1faee;
+      cursor: pointer;
+    }
+    #settingsIcon:hover {
+      opacity: 0.8;
+    }
+    .form-container {
+      margin-top: 110px;
+      text-align: center;
+      width: 90%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-left: auto;
+      margin-right: auto;
+      padding-bottom: 50px;
+    }
+    /* ==================================
+       UPLOAD BUTTON & ACTIONS
+    ================================== */
+    .upload-button {
+      position: relative;
+      width: 100%;
+      height: 200px;
+      margin: 20px 0;
+      background: #a8dadc;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .upload-button:hover {
+      transform: scale(1.02);
+      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+    }
+    .upload-button img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 10px;
+    }
+    .upload-button input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      opacity: 0;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+      z-index: 3;
+    }
+    .change-overlay {
+      position: absolute;
+      top: 0; 
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2em;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 2; 
+      border-radius: 10px;
+    }
+    .upload-button:hover .change-overlay {
+      opacity: 1;
+    }
+    .hidden {
+      display: none;
+    }
+    .upload-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+    /* ==================================
+       WORKFLOW GUIDE 
+    ================================== */
+    .workflow-guide {
+      background: #f1faee;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 10px 0 20px 0;
+      width: 100%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      color: #1d3557;
+    }
+    
+    .workflow-guide h3 {
+      margin: 0 0 10px 0;
+      color: #457b9d;
+      font-size: 1em;
+    }
+    
+    .workflow-guide p {
+      margin: 0;
+      font-size: 0.9em;
+    }
+    /* ==================================
+       REFERENCE POINT DISPLAYS
+    ================================== */
+    .reference-section {
+      margin-top: 15px;
+      background: rgba(168, 218, 220, 0.2);
+      border-radius: 10px;
+      padding: 15px;
+      width: 100%;
+    }
+    
+    .sample-section {
+      margin-top: 10px;
+      background: rgba(69, 123, 157, 0.1);
+      border-radius: 10px;
+      padding: 15px;
+      width: 100%;
+    }
+    
+    .section-title {
+      color: #1d3557;
+      margin: 0 0 10px 0;
+      font-size: 1em;
+      font-weight: bold;
+      text-align: left;
+    }
+    .rgb-display {
+      margin: 5px 0;
+      padding: 8px 10px;
+      font-weight: 500;
+      color: #1d3557;
+      background: rgba(255,255,255,0.8);
+      border-radius: 5px;
+      width: 100%;
+      text-align: left;
+      font-size: 0.9em;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    .captured {
+      background: rgba(42, 157, 143, 0.2);
+    }
+    .choose-point {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+      font-weight: bold;
+      color: #f1faee;
+      background: #457b9d;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      margin-bottom: 8px;
+    }
+    .choose-point i {
+      margin-right: 6px;
+    }
+    .choose-point:hover {
+      background: #1d3557;
+      transform: scale(1.02);
+    }
+    
+    .choose-point[data-point="white"],
+    .choose-point[data-point="black"] {
+      background: #1d3557;
+    }
+    
+    .choose-point[data-point="ref"] {
+      background: #e63946;
+    }
+    
+    .choose-point[data-point="samp1"],
+    .choose-point[data-point="samp2"],
+    .choose-point[data-point="samp3"],
+    .choose-point[data-point="samp4"] {
+      background: #2a9d8f;
+    }
+    /* ==================================
+       MIDDLE ACTION BUTTONS (Restart / Unit)
+    ================================== */
+    .middle-buttons {
+      display: flex;
+      width: 100%;
+      gap: 10px;
+      margin-top: 25px;
+    }
+    .middle-buttons button {
+      flex: 1; /* each consumes 50% of the row */
+    }
+    /* "Analyze" button at the bottom */
+    #analyze, #restartProcess, #unitToggle {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #f1faee;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+    #analyze {
+      background: #2a9d8f;
+      margin-top: 20px;
+      padding: 18px;
+      font-size: 1.2em;
+    }
+    #analyze i {
+      margin-right: 6px;
+    }
+    #analyze:hover {
+      background: #1d3557;
+      transform: scale(1.02);
+    }
+    #restartProcess {
+      background: #e63946;
+    }
+    #restartProcess i {
+      margin-right: 6px;
+    }
+    #restartProcess:hover {
+      background: #c42c39;
+      transform: scale(1.02);
+    }
+    #unitToggle {
+      background: #1d3557;
+    }
+    #unitToggle i {
+      margin-right: 6px;
+    }
+    #unitToggle:hover {
+      background: #457b9d;
+      transform: scale(1.02);
+    }
+    /* ==================================
+       POPUP FOR PICKING REFERENCE POINTS
+    ================================== */
+    .popup-view {
+      position: fixed;
+      top: 0; 
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 30;
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out, visibility 0.3s;
+    }
+    .popup-view.active {
+      visibility: visible;
+      opacity: 1;
+    }
+    .popup-content {
+      background: #1d3557;
+      padding: 15px;
+      border-radius: 10px;
+      text-align: center;
+      width: 100%;
+      height: 100%;
+      color: #f1faee;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-sizing: border-box;
+      position: relative;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+    
+    .popup-title {
+      margin: 0 0 5px 0;
+      padding: 0;
+      font-size: 1.4em;
+    }
+    
+    .popup-content .instruction {
+      margin: 0 0 10px 0;
+      font-size: 0.9em;
+      font-weight: normal;
+      opacity: 0.8;
+    }
+    
+    .popup-content button {
+      width: 100%;
+      padding: 15px 0;
+      font-size: 1em;
+      font-weight: bold;
+      border: none;
+      border-radius: 5px;
+      background: #e63946;
+      color: #f1faee;
+      cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      margin-top: 10px;
+    }
+    .popup-content button:hover {
+      background: #c42c39;
+      transform: scale(1.02);
+    }
+    .popup-image-container {
+      position: relative;
+      width: 100%;
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 10px 0;
+      overflow: hidden;
+    }
+    .popup-image {
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 10px;
+      cursor: crosshair;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+      touch-action: none;
+    }
+    /* OpenCV Canvas */
+    #canvasOutput {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      margin: auto;
+      max-width: 100%;
+      max-height: 100%;
+      border-radius: 10px;
+      pointer-events: none;
+    }
+    /* ==================================
+       COMPACT DETECTION SETTINGS
+    ================================== */
+    .detection-settings {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .slider-container {
+      flex: 1;
+    }
+    .slider-label {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 3px;
+      color: #f1faee;
+      font-size: 0.85em;
+    }
+    .slider-label span {
+      font-weight: bold;
+    }
+    .slider-container input[type="range"] {
+      width: 100%;
+      height: 20px;
+      -webkit-appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+      outline: none;
+    }
+    .slider-container input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #e63946;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+    /* Status message */
+    .detection-status {
+      margin: 5px 0;
+      padding: 5px 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+      font-size: 0.9em;
+      text-align: center;
+    }
+    /* Color preview */
+    .color-preview {
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      margin-right: 10px;
+      vertical-align: middle;
+      border: 1px solid #fff;
+    }
+    /* RGB Value display */
+    .rgb-value-display {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 5px 0;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 5px;
+      font-weight: bold;
+    }
+    /* Manual fallback option */
+    .manual-fallback {
+      font-size: 0.85em;
+      color: #a8dadc;
+      margin-top: 5px;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    /* ==================================
+       ANALYSIS POPUP (FINAL RESULTS)
+    ================================== */
+    .analysis-popup {
+      position: fixed;
+      top: 0; 
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 40; 
+      visibility: hidden;
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out, visibility 0.3s;
+    }
+    .analysis-popup.active {
+      visibility: visible;
+      opacity: 1;
+    }
+    .analysis-content {
+      background: #1d3557;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      width: 95%;
+      height: 95%;
+      color: #f1faee;
+      position: relative;
+      animation: fadeIn 0.3s ease-in-out;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+    }
+    .spinner {
+      margin: 20px auto;
+      width: 40px;
+      height: 40px;
+      border: 4px solid #f1faee;
+      border-top: 4px solid #e63946;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      0%   { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+    .analysis-content.success {
+      background: #2a9d8f; 
+      transition: background 0.3s ease-in-out;
+    }
+    .checkmark {
+      font-size: 3em;
+      margin: 10px 0;
+    }
+    .analysis-content h2 {
+      margin: 5px 0 15px 0;
+      font-size: 1.6em;
+    }
+    .analysis-content h3 {
+      margin: 15px 0 10px 0;
+      width: 100%;
+      text-align: left;
+      font-size: 1.2em;
+    }
+    .analysis-content p {
+      margin: 5px 0;
+      font-size: 1em;
+    }
+    /* 
+      Export & Share buttons 
+    */
+    .analysis-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+      margin: 25px 0 15px 0;
+    }
+    .analysis-buttons button {
+      flex: 1;
+      padding: 12px 0;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s, transform 0.2s;
+      background: #1a6c51; /* dark green */
+      color: #f1faee;
+    }
+    .analysis-buttons button i {
+      margin-right: 6px;
+    }
+    .analysis-buttons button:hover {
+      background: #14513c;
+      transform: scale(1.02);
+    }
+    
+    .analysis-content .close-btn {
+      background: rgba(230, 57, 70, 0.9);
+      padding: 12px;
+      width: 100%;
+      margin-top: 10px;
+      border: none;
+      border-radius: 5px;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    .analysis-content .close-btn:hover {
+      background: #c42c39;
+    }
+    /* Chart container styles */
+    .chart-container {
+      width: 100%;
+      height: auto;
+      min-height: 250px;
+      margin: 10px 0;
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    /* Sample results table */
+    .results-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+      color: #1d3557;
+      background: rgba(255,255,255,0.95);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 0.85em; /* Reduced font size */
+    }
+    .results-table th, .results-table td {
+      padding: 8px 4px; /* Reduced padding */
+      text-align: center;
+      border-bottom: 1px solid rgba(0,0,0,0.1);
+    }
+    .results-table th {
+      background-color: #457b9d;
+      color: white;
+      font-weight: bold;
+    }
+    .results-table tr:last-child td {
+      border-bottom: none;
+    }
+    .results-table tr:nth-child(even) {
+      background-color: rgba(168, 218, 220, 0.2);
+    }
+    
+    /* Loading overlay for OpenCV */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      visibility: hidden;
+    }
+    
+    /* OpenCV status banner */
+    .opencv-status {
+      background: #f1faee;
+      color: #1d3557;
+      padding: 10px;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      font-weight: bold;
+      width: 100%;
+      text-align: center;
+    }
+    
+    /* Hide hidden canvases */
+    #canvasInput {
+      display: none;
+    }
+    /* Manual circle mode */
+    .manual-radius-input {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      margin-top: 5px;
+    }
+    
+    .manual-radius-input input {
+      width: 70px;
+      height: 30px;
+      margin: 0 10px;
+      padding: 5px;
+      border: none;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #1d3557;
+      font-weight: bold;
+      text-align: center;
+    }
+    
+    .manual-radius-input button {
+      margin: 0;
+      padding: 5px 10px;
+      height: 30px;
+      width: auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="main">
+    <header>
+      <!-- Settings icon on the top-left, no text -->
+      <div id="settingsIcon">
+        <i class="fa fa-cog" aria-hidden="true"></i>
+      </div>
+      <h1>Immuno Chroma</h1>
+    </header>
+    <div class="form-container">
+      <div id="opencv-status" class="opencv-status">
+        <i class="fa fa-spinner fa-spin"></i> Loading OpenCV.js...
+      </div>
+      
+      <form id="image-upload-form">
+        <div class="upload-section">
+          <div class="upload-button" id="upload">
+            <label for="image" style="pointer-events:none;">
+              <span class="upload-icon">
+                <i class="fa fa-camera" aria-hidden="true"></i>
+              </span>
+              <span>Upload Image</span>
+            </label>
+            <input type="file" id="image" accept="image/*" />
+            <div class="change-overlay">Change Image</div>
+          </div>
+          
+          <!-- Workflow guide -->
+          <div class="workflow-guide">
+            <h3>How it works:</h3>
+            <p>1. Upload an image of your sensor</p>
+            <p>2. Select white and black reference points</p>
+            <p>3. Choose the reference point and 4 sample points</p>
+            <p>4. Click "Analyze" to see results</p>
+          </div>
+          <div class="upload-actions hidden" id="actions">
+            <!-- White and Black reference points -->
+            <div class="reference-section">
+              <div class="section-title">1. Reference Calibration</div>
+              <button type="button" class="choose-point" data-point="white">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose White Reference
+              </button>
+              <button type="button" class="choose-point" data-point="black">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose Black Reference
+              </button>
+              <div class="rgb-display" id="rgb-display-white">White Reference: not captured</div>
+              <div class="rgb-display" id="rgb-display-black">Black Reference: not captured</div>
+            </div>
+            
+            <!-- Reference point -->
+            <div class="reference-section">
+              <div class="section-title">2. Baseline Reference</div>
+              <button type="button" class="choose-point" data-point="ref">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose Reference Point
+              </button>
+              <div class="rgb-display" id="rgb-display-ref">Reference Point: not captured</div>
+            </div>
+            
+            <!-- Sample points -->
+            <div class="sample-section">
+              <div class="section-title">3. Sample Points</div>
+              <button type="button" class="choose-point" data-point="samp1">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose Sample 1
+              </button>
+              <div class="rgb-display" id="rgb-display-samp1">Sample 1: not captured</div>
+              
+              <button type="button" class="choose-point" data-point="samp2">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose Sample 2
+              </button>
+              <div class="rgb-display" id="rgb-display-samp2">Sample 2: not captured</div>
+              
+              <button type="button" class="choose-point" data-point="samp3">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose Sample 3
+              </button>
+              <div class="rgb-display" id="rgb-display-samp3">Sample 3: not captured</div>
+              
+              <button type="button" class="choose-point" data-point="samp4">
+                <i class="fa fa-crosshairs" aria-hidden="true"></i> Choose Sample 4
+              </button>
+              <div class="rgb-display" id="rgb-display-samp4">Sample 4: not captured</div>
+            </div>
+          </div>
+        </div>
+        <!-- Restart & Unit on one horizontal line -->
+        <div class="middle-buttons">
+          <button type="button" id="restartProcess">
+            <i class="fa fa-refresh" aria-hidden="true"></i>
+            Restart
+          </button>
+          <button type="button" id="unitToggle">
+            <i class="fa fa-tint" aria-hidden="true"></i>
+            Unit: mg/mL
+          </button>
+        </div>
+        <!-- Analyze button -->
+        <button type="submit" id="analyze">
+          <i class="fa fa-flask" aria-hidden="true"></i>
+          Analyze
+        </button>
+      </form>
+    </div>
+  </div>
+  <!-- Popup for picking reference points -->
+  <div class="popup-view" id="popup">
+    <div class="popup-content">
+      <h2 class="popup-title" id="popup-title">Choose Point</h2>
+      <p class="instruction">Tap anywhere on the image to detect a circle</p>
+      <!-- Compact Detection Settings -->
+      <div class="detection-settings">
+        <div class="slider-container">
+          <div class="slider-label">
+            <div>Sensitivity</div>
+            <span id="sensitivityValue">5</span>
+          </div>
+          <input type="range" id="sensitivitySlider" min="1" max="50" value="5">
+        </div>
+        <div class="slider-container">
+          <div class="slider-label">
+            <div>Radius (px)</div>
+            <span id="maxRadiusValue">100</span>
+          </div>
+          <input type="range" id="maxRadiusSlider" min="20" max="300" value="100">
+        </div>
+      </div>
+      
+      <!-- Status banner -->
+      <div class="detection-status" id="detectionStatus">Ready to detect</div>
+      
+      <!-- Image container with canvas overlay - now larger -->
+      <div class="popup-image-container">
+        <img class="popup-image" id="popupImage" src="" alt="Uploaded" />
+        <canvas id="canvasOutput"></canvas>
+      </div>
+      
+      <!-- Hidden canvas for OpenCV processing -->
+      <canvas id="canvasInput"></canvas>
+      
+      <!-- RGB Value -->
+      <div class="rgb-value-display">
+        <div id="rgbValue">RGB: not captured</div>
+      </div>
+      
+      <!-- Manual fallback option -->
+      <div class="manual-fallback" id="manualFallback">
+        Having trouble finding a circle? Try manual mode
+      </div>
+      
+      <!-- Manual radius input (hidden by default) -->
+      <div class="manual-radius-input" id="manualRadiusInput">
+        <label>Custom radius:</label>
+        <input type="number" id="customRadius" min="5" max="300" value="25">
+        <button id="applyRadius">Apply</button>
+      </div>
+      
+      <button id="done" disabled>Confirm Selection</button>
+    </div>
+  </div>
+  <!-- Loading spinner for circle detection -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+  </div>
+  <!-- Loading popup for analysis (final results) -->
+  <div class="analysis-popup" id="analysisPopup">
+    <div class="analysis-content">
+      <div class="spinner"></div>
+      <p id="analysisMessage">Analyzing...</p>
+    </div>
+  </div>
+  <script>
+    // OpenCV.js loading status
+    let opencvReady = false;
+    let detectedCircle = null;
+    let manualModeActive = false;
+    
+    function onOpenCvReady() {
+      opencvReady = true;
+      const statusEl = document.getElementById('opencv-status');
+      statusEl.innerHTML = '<i class="fa fa-check-circle"></i> OpenCV.js is ready';
+      statusEl.style.backgroundColor = 'rgba(42, 157, 143, 0.2)';
+      console.log("OpenCV.js loaded successfully");
+    }
+    
+    function onOpenCvError() {
+      const statusEl = document.getElementById('opencv-status');
+      statusEl.innerHTML = '<i class="fa fa-exclamation-triangle"></i> Failed to load OpenCV.js. Some features may not work.';
+      statusEl.style.backgroundColor = 'rgba(230, 57, 70, 0.2)';
+      console.error("Failed to load OpenCV.js");
+    }
+    // Show/hide loading spinner
+    const loadingOverlay = document.getElementById('loadingOverlay');
+    function showLoading() {
+      loadingOverlay.style.visibility = 'visible';
+    }
+    
+    function hideLoading() {
+      loadingOverlay.style.visibility = 'hidden';
+    }
+    /***********************************************************
+     * Circle detection with OpenCV.js
+     ***********************************************************/
+    // Elements
+    const popupImage = document.getElementById('popupImage');
+    const canvasInput = document.getElementById('canvasInput');
+    const canvasOutput = document.getElementById('canvasOutput');
+    const rgbValueElement = document.getElementById('rgbValue');
+    const detectionStatusElement = document.getElementById('detectionStatus');
+    const doneButton = document.getElementById('done');
+    const manualFallback = document.getElementById('manualFallback');
+    const manualRadiusInput = document.getElementById('manualRadiusInput');
+    const customRadiusInput = document.getElementById('customRadius');
+    const applyRadiusButton = document.getElementById('applyRadius');
+    
+    // Manual mode toggle
+    manualFallback.addEventListener('click', function() {
+      manualModeActive = !manualModeActive;
+      manualRadiusInput.style.display = manualModeActive ? 'flex' : 'none';
+      manualFallback.textContent = manualModeActive 
+        ? "Switch back to automatic detection" 
+        : "Having trouble finding a circle? Try manual mode";
+    });
+    // Apply custom radius
+    applyRadiusButton.addEventListener('click', function() {
+      // If we have previously clicked a point, use that
+      if (lastClickedPoint) {
+        const radius = parseInt(customRadiusInput.value);
+        if (radius >= 5 && radius <= 300) {
+          manualDetectCircle(lastClickedPoint.x, lastClickedPoint.y, radius);
+        } else {
+          alert("Please enter a radius between 5 and 300 pixels");
+        }
+      } else {
+        detectionStatusElement.textContent = "Please tap on the image first to set a center point";
+        detectionStatusElement.style.backgroundColor = 'rgba(230, 57, 70, 0.4)';
+      }
+    });
+    
+    // Sliders for circle detection settings
+    const sensitivitySlider = document.getElementById('sensitivitySlider');
+    const maxRadiusSlider = document.getElementById('maxRadiusSlider');
+    const sensitivityValueElement = document.getElementById('sensitivityValue');
+    const maxRadiusValueElement = document.getElementById('maxRadiusValue');
+    
+    // Update slider value displays
+    sensitivitySlider.addEventListener('input', () => {
+      sensitivityValueElement.textContent = sensitivitySlider.value;
+    });
+    
+    maxRadiusSlider.addEventListener('input', () => {
+      maxRadiusValueElement.textContent = maxRadiusSlider.value;
+    });
+    // Store last clicked point for manual mode
+    let lastClickedPoint = null;
+    // Handle image click in popup
+    popupImage.addEventListener('click', function(e) {
+      if (!opencvReady) {
+        alert("OpenCV.js is still loading. Please wait a moment and try again.");
+        return;
+      }
+      
+      showLoading();
+      
+      // Get click coordinates relative to the image
+      const rect = popupImage.getBoundingClientRect();
+      const scaleX = popupImage.naturalWidth / popupImage.clientWidth;
+      const scaleY = popupImage.naturalHeight / popupImage.clientHeight;
+      
+      const x = Math.round((e.clientX - rect.left) * scaleX);
+      const y = Math.round((e.clientY - rect.top) * scaleY);
+      
+      // Store the clicked point for manual mode
+      lastClickedPoint = { x, y };
+      
+      // Set up canvas dimensions now
+      canvasInput.width = popupImage.naturalWidth;
+      canvasInput.height = popupImage.naturalHeight;
+      canvasOutput.width = popupImage.naturalWidth;
+      canvasOutput.height = popupImage.naturalHeight;
+      
+      console.log(`Clicked at (${x}, ${y})`);
+      detectionStatusElement.textContent = `Processing point (${x}, ${y})...`;
+      
+      // Process after a short delay to allow UI update
+      setTimeout(() => {
+        if (manualModeActive) {
+          // Use the radius from the input field
+          const radius = parseInt(customRadiusInput.value);
+          manualDetectCircle(x, y, radius);
+        } else {
+          // Use automatic detection
+          detectCircleFromPoint(x, y);
+        }
+      }, 50);
+    });
+    function manualDetectCircle(centerX, centerY, radius) {
+      try {
+        // Draw image on canvas for OpenCV processing
+        const ctxInput = canvasInput.getContext('2d');
+        ctxInput.drawImage(popupImage, 0, 0);
+        
+        // Read image from canvas
+        let src = cv.imread(canvasInput);
+        let displayImg = src.clone();
+        
+        // Create mask for the circle region
+        let mask = new cv.Mat.zeros(src.rows, src.cols, cv.CV_8UC1);
+        let center = new cv.Point(centerX, centerY);
+        
+        // Draw a filled circle on the mask
+        cv.circle(mask, center, radius, new cv.Scalar(255), -1);
+        
+        // Calculate average color within the circle
+        let avgColor = calculateAverageColor(src, centerX, centerY, radius);
+        
+        // Draw the circle on display image
+        cv.circle(displayImg, center, radius, new cv.Scalar(255, 0, 0, 255), 2); // Red circle outline
+        cv.circle(displayImg, center, 3, new cv.Scalar(0, 255, 0, 255), -1);    // Green center point
+        
+        // Show the result
+        cv.imshow('canvasOutput', displayImg);
+        
+        // Store detected circle info
+        detectedCircle = {
+          x: centerX,
+          y: centerY,
+          radius: radius,
+          color: avgColor
+        };
+        
+        // Update RGB display
+        rgbValueElement.innerHTML = 
+          `RGB: (${avgColor[0]}, ${avgColor[1]}, ${avgColor[2]}) <span class="color-preview" style="background-color: rgb(${avgColor[0]}, ${avgColor[1]}, ${avgColor[2]})"></span>`;
+        
+        // Update status
+        detectionStatusElement.textContent = `Manual circle applied (${radius}px radius)`;
+        detectionStatusElement.style.backgroundColor = 'rgba(42, 157, 143, 0.4)';
+        
+        // Enable done button
+        doneButton.disabled = false;
+        
+        // Clean up
+        src.delete();
+        displayImg.delete();
+        mask.delete();
+        
+      } catch (err) {
+        console.error("Error in manual circle application:", err);
+        detectionStatusElement.textContent = "Error: " + err.message;
+        detectionStatusElement.style.backgroundColor = 'rgba(230, 57, 70, 0.4)';
+        rgbValueElement.textContent = 'RGB: not captured';
+        detectedCircle = null;
+        doneButton.disabled = true;
+      }
+      
+      hideLoading();
+    }
+    function detectCircleFromPoint(centerX, centerY) {
+      try {
+        // Draw image on canvas for OpenCV processing
+        const ctxInput = canvasInput.getContext('2d');
+        ctxInput.drawImage(popupImage, 0, 0);
+        
+        // Get parameters from sliders
+        const sensitivity = parseInt(sensitivitySlider.value);
+        const maxRadius = parseInt(maxRadiusSlider.value);
+        
+        // Read image from canvas
+        let src = cv.imread(canvasInput);
+        let displayImg = src.clone();
+        
+        // Convert to grayscale and blur for better edge detection
+        let gray = new cv.Mat();
+        cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+        cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0, 0);
+        
+        // Enhanced edge detection
+        let edges = new cv.Mat();
+        let threshold1 = 50;
+        let threshold2 = 150;
+        cv.Canny(gray, edges, threshold1, threshold2, 3, false);
+        
+        // Find circles using our detection methods - first try Hough Circles
+        let foundCircle = false;
+        let circles = new cv.Mat();
+        
+        try {
+          // Try different parameter sets for circle detection
+          const attempts = [
+            { dp: 1, minDist: 20, param1: 50, param2: 30, minRadius: 5, maxRadius: maxRadius },
+            { dp: 1, minDist: 20, param1: 100, param2: 20, minRadius: 5, maxRadius: maxRadius },
+            { dp: 1.5, minDist: 20, param1: 100, param2: 15, minRadius: 5, maxRadius: maxRadius },
+            { dp: 2, minDist: 20, param1: 150, param2: 10, minRadius: 5, maxRadius: maxRadius }
+          ];
+          
+          for (const params of attempts) {
+            if (foundCircle) break;
+            
+            try {
+              // Clear any previous circles
+              circles.delete();
+              circles = new cv.Mat();
+              
+              // Try to detect circles with these parameters
+              cv.HoughCircles(gray, circles, cv.HOUGH_GRADIENT, params.dp, params.minDist, 
+                              params.param1, params.param2, params.minRadius, params.maxRadius);
+              
+              // If we found circles, find the closest one to our click point
+              if (circles.rows > 0 && circles.cols > 0) {
+                let bestCircle = { x: 0, y: 0, radius: 0, dist: Infinity };
+                
+                for (let i = 0; i < circles.rows; ++i) {
+                  for (let j = 0; j < circles.cols; ++j) {
+                    // Get circle data
+                    const x = circles.data32F[i * circles.cols * 3 + j * 3];
+                    const y = circles.data32F[i * circles.cols * 3 + j * 3 + 1];
+                    const radius = circles.data32F[i * circles.cols * 3 + j * 3 + 2];
+                    
+                    // Calculate distance to click point
+                    const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                    
+                    // If this is closer than our best so far, update it
+                    if (dist < bestCircle.dist) {
+                      bestCircle = { x, y, radius, dist };
+                    }
+                  }
+                }
+                
+                // If the best circle is close enough to our click point, use it
+                if (bestCircle.dist < bestCircle.radius * 2) {
+                  // Found a good circle
+                  foundCircle = true;
+                  
+                  // Use the detected circle
+                  const avgColor = calculateAverageColor(src, bestCircle.x, bestCircle.y, bestCircle.radius);
+                  
+                  // Draw the circle
+                  const center = new cv.Point(bestCircle.x, bestCircle.y);
+                  cv.circle(displayImg, center, bestCircle.radius, new cv.Scalar(255, 0, 0, 255), 2);
+                  cv.circle(displayImg, center, 3, new cv.Scalar(0, 255, 0, 255), -1);
+                  
+                  // Show the result
+                  cv.imshow('canvasOutput', displayImg);
+                  
+                  // Store detected circle info
+                  detectedCircle = {
+                    x: bestCircle.x,
+                    y: bestCircle.y,
+                    radius: bestCircle.radius,
+                    color: avgColor
+                  };
+                  
+                  // Update RGB display
+                  rgbValueElement.innerHTML = 
+                    `RGB: (${avgColor[0]}, ${avgColor[1]}, ${avgColor[2]}) <span class="color-preview" style="background-color: rgb(${avgColor[0]}, ${avgColor[1]}, ${avgColor[2]})"></span>`;
+                  
+                  // Update status
+                  detectionStatusElement.textContent = `Circle detected (${Math.round(bestCircle.radius)}px radius)`;
+                  detectionStatusElement.style.backgroundColor = 'rgba(42, 157, 143, 0.4)';
+                  
+                  // Enable done button
+                  doneButton.disabled = false;
+                }
+              }
+            } catch (e) {
+              console.warn("Error with parameters set:", e);
+            }
+          }
+        } catch (e) {
+          console.warn("Error during Hough circles detection:", e);
+        }
+        
+        // If we didn't find a circle with Hough, try our custom radial detection
+        if (!foundCircle) {
+          // Use radial detection as fallback
+          const samplingDensity = 24; // Angles to sample
+          let radii = [];
+          
+          // Sample in multiple directions (like spokes of a wheel)
+          for (let angle = 0; angle < 360; angle += (360 / samplingDensity)) {
+            const radianAngle = angle * Math.PI / 180;
+            let radius = findRadiusInDirection(gray, centerX, centerY, radianAngle, maxRadius, sensitivity);
+            if (radius > 0) {
+              radii.push(radius);
+            }
+          }
+          
+          // If we found enough radii, average them to get the final radius
+          if (radii.length >= samplingDensity / 3) {
+            // Remove outliers
+            radii.sort((a, b) => a - b);
+            const q1Index = Math.floor(radii.length * 0.25);
+            const q3Index = Math.floor(radii.length * 0.75);
+            const filteredRadii = radii.slice(q1Index, q3Index + 1);
+            
+            // Calculate average radius
+            const avgRadius = Math.round(filteredRadii.reduce((sum, r) => sum + r, 0) / filteredRadii.length);
+            
+            // Check if the radius is reasonable
+            if (avgRadius > 5) {
+              // Calculate average color
+              const avgColor = calculateAverageColor(src, centerX, centerY, avgRadius);
+              
+              // Draw the circle
+              const center = new cv.Point(centerX, centerY);
+              cv.circle(displayImg, center, avgRadius, new cv.Scalar(255, 0, 0, 255), 2);
+              cv.circle(displayImg, center, 3, new cv.Scalar(0, 255, 0, 255), -1);
+              
+              // Show the result
+              cv.imshow('canvasOutput', displayImg);
+              
+              // Store detected circle info
+              detectedCircle = {
+                x: centerX,
+                y: centerY,
+                radius: avgRadius,
+                color: avgColor
+              };
+              
+              // Update RGB display
+              rgbValueElement.innerHTML = 
+                `RGB: (${avgColor[0]}, ${avgColor[1]}, ${avgColor[2]}) <span class="color-preview" style="background-color: rgb(${avgColor[0]}, ${avgColor[1]}, ${avgColor[2]})"></span>`;
+              
+              // Update status
+              detectionStatusElement.textContent = `Circle detected (${avgRadius}px radius)`;
+              detectionStatusElement.style.backgroundColor = 'rgba(42, 157, 143, 0.4)';
+              
+              // Enable done button
+              doneButton.disabled = false;
+              
+              foundCircle = true;
+            }
+          }
+        }
+        
+        // If we still didn't find a circle, suggest manual mode
+        if (!foundCircle) {
+          // Draw the clicked point
+          cv.circle(displayImg, new cv.Point(centerX, centerY), 3, new cv.Scalar(0, 255, 0, 255), -1);
+          cv.imshow('canvasOutput', displayImg);
+          
+          detectionStatusElement.textContent = "No clear circle found. Try manual mode or adjust sensitivity.";
+          detectionStatusElement.style.backgroundColor = 'rgba(230, 57, 70, 0.4)';
+          rgbValueElement.textContent = 'RGB: not captured';
+          detectedCircle = null;
+          doneButton.disabled = true;
+          
+          // Suggest manual mode more prominently
+          manualFallback.style.fontWeight = 'bold';
+          manualFallback.style.color = '#e63946';
+        }
+        
+        // Clean up
+        gray.delete();
+        edges.delete();
+        circles.delete();
+        src.delete();
+        displayImg.delete();
+        
+      } catch (err) {
+        console.error("Error in circle detection:", err);
+        detectionStatusElement.textContent = "Error: " + err.message;
+        detectionStatusElement.style.backgroundColor = 'rgba(230, 57, 70, 0.4)';
+        rgbValueElement.textContent = 'RGB: not captured';
+        detectedCircle = null;
+        doneButton.disabled = true;
+      }
+      
+      hideLoading();
+    }
+    function findRadiusInDirection(grayMat, centerX, centerY, angle, maxRadius, sensitivity) {
+      // Direction vector
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      
+      // Previous pixel value
+      let prevValue = 0;
+      
+      // Track significant color changes
+      let significantChanges = [];
+      
+      // Sample along the ray
+      for (let r = 1; r <= maxRadius; r++) {
+        const x = Math.round(centerX + r * dx);
+        const y = Math.round(centerY + r * dy);
+        
+        // Check if point is inside the image
+        if (x < 0 || y < 0 || x >= grayMat.cols || y >= grayMat.rows) {
+          break;
+        }
+        
+        // Get pixel value
+        const value = grayMat.ucharPtr(y, x)[0];
+        
+        // On first iteration, just store the value
+        if (r === 1) {
+          prevValue = value;
+          continue;
+        }
+        
+        // Check for significant change
+        const change = Math.abs(value - prevValue);
+        if (change > sensitivity) {
+          significantChanges.push({
+            radius: r,
+            change: change
+          });
+        }
+        
+        prevValue = value;
+      }
+      
+      // If we found significant changes, return the radius of the most significant one
+      if (significantChanges.length > 0) {
+        // Sort by change magnitude (descending)
+        significantChanges.sort((a, b) => b.change - a.change);
+        return significantChanges[0].radius;
+      }
+      
+      return 0; // No significant change found
+    }
+    function calculateAverageColor(img, centerX, centerY, radius) {
+      let totalR = 0, totalG = 0, totalB = 0;
+      let pixelCount = 0;
+      
+      // Get square bounds that encompass the circle
+      let minX = Math.max(0, Math.floor(centerX - radius));
+      let maxX = Math.min(img.cols - 1, Math.ceil(centerX + radius));
+      let minY = Math.max(0, Math.floor(centerY - radius));
+      let maxY = Math.min(img.rows - 1, Math.ceil(centerY + radius));
+      
+      // Create a mask for the circle to ensure we only count pixels inside it
+      let mask = new cv.Mat.zeros(img.rows, img.cols, cv.CV_8UC1);
+      cv.circle(mask, new cv.Point(centerX, centerY), radius, new cv.Scalar(255), -1);
+      
+      // Sample pixels in the square and check if they're inside the circle using the mask
+      for (let y = minY; y <= maxY; y++) {
+        for (let x = minX; x <= maxX; x++) {
+          // Check if the pixel is inside the circle using the mask
+          if (mask.ucharPtr(y, x)[0] === 255) {
+            // Get pixel data (R, G, B)
+            let pixel = img.ucharPtr(y, x);
+            totalR += pixel[0];
+            totalG += pixel[1];
+            totalB += pixel[2];
+            pixelCount++;
+          }
+        }
+      }
+      
+      // Clean up
+      mask.delete();
+      
+      // Calculate average
+      if (pixelCount === 0) return [0, 0, 0];
+      
+      let avgR = Math.round(totalR / pixelCount);
+      let avgG = Math.round(totalG / pixelCount);
+      let avgB = Math.round(totalB / pixelCount);
+      
+      return [avgR, avgG, avgB];
+    }
+    /***********************************************************
+     * 2) Color space conversion functions
+     ***********************************************************/
+    // Step 2: White Balancing Correction (from the LaTeX document)
+    function normalizeRGB(rgb, whiteRef, blackRef) {
+      const epsilon = 0.0001;
+      return [
+            Math.max(0, Math.min(255, ((rgb[0] - blackRef[0]) / (whiteRef[0] - blackRef[0] + epsilon)) * 255)),
+            Math.max(0, Math.min(255, ((rgb[1] - blackRef[1]) / (whiteRef[1] - blackRef[1] + epsilon)) * 255)),
+            Math.max(0, Math.min(255, ((rgb[2] - blackRef[2]) / (whiteRef[2] - blackRef[2] + epsilon)) * 255))
+          ];
+    }
+    // Convert RGB to Lab using d3-color
+    function rgbToLab(rgb) {
+      // Convert RGB array to d3.rgb object
+      const r = rgb[0];
+      const g = rgb[1];
+      const b = rgb[2];
+      
+      // Use d3 to convert to Lab
+      const labColor = d3.lab(d3.rgb(r, g, b));
+      
+      // Return Lab components as an array
+      return [labColor.l, labColor.a, labColor.b];
+    }
+    // Calculate Euclidean distance between two Lab values
+    function labDistance(lab1, lab2) {
+      return Math.sqrt(
+        Math.pow(lab1[0] - lab2[0], 2) +
+        Math.pow(lab1[1] - lab2[1], 2) +
+        Math.pow(lab1[2] - lab2[2], 2)
+      );
+    }
+    
+    // Function to estimate concentration based on distance using the reference table
+//     function estimateConcentration(distance) {
+//       // If distance is below the minimum reference distance
+//       if (distance <= referenceTable[0].distance) {
+//         return referenceTable[0].concentration;
+//       }
+      
+//       // If distance is above the maximum reference distance
+//       if (distance >= referenceTable[referenceTable.length - 1].distance) {
+//         return referenceTable[referenceTable.length - 1].concentration;
+//       }
+      
+//       // Find the two reference points to interpolate between
+//       for (let i = 0; i < referenceTable.length - 1; i++) {
+//         if (distance >= referenceTable[i].distance && distance <= referenceTable[i+1].distance) {
+//           // Linear interpolation
+//           const x1 = referenceTable[i].distance;
+//           const x2 = referenceTable[i+1].distance;
+//           const y1 = referenceTable[i].concentration;
+//           const y2 = referenceTable[i+1].concentration;
+          
+//           // Linear interpolation formula: y = y1 + (y2 - y1) * ((x - x1) / (x2 - x1))
+//           return y1 + (y2 - y1) * ((distance - x1) / (x2 - x1));
+//         }
+//       }
+      
+//       // Fallback (should not happen)
+//       return null;
+//     }
+    
+    
+    
+    
+    
+    
+    
+    function estimateConcentration(distance) {
+    // Find the closest reference point considering standard deviation
+    let bestMatch = null;
+    let minStdDistance = Infinity;
+
+    for (let i = 0; i < referenceTable.length; i++) {
+      // Calculate how many standard deviations away this point is
+      const stdDistance = Math.abs(distance - referenceTable[i].distance) / referenceTable[i].std;
+
+      if (stdDistance < minStdDistance) {
+        minStdDistance = stdDistance;
+        bestMatch = referenceTable[i];
+      }
+    }
+
+    // Return the concentration of the closest match
+    return bestMatch.concentration;
+  }
+    
+    
+    
+    
+    /***********************************************************
+     * 3) Main page code
+     ***********************************************************/
+    const imageInput     = document.getElementById('image');
+    const uploadButton   = document.getElementById('upload');
+    const actions        = document.getElementById('actions');
+    
+    // Reference elements
+    const rgbDisplayWhite = document.getElementById('rgb-display-white');
+    const rgbDisplayBlack = document.getElementById('rgb-display-black');
+    const rgbDisplayRef   = document.getElementById('rgb-display-ref');
+    const rgbDisplaySamp1 = document.getElementById('rgb-display-samp1');
+    const rgbDisplaySamp2 = document.getElementById('rgb-display-samp2');
+    const rgbDisplaySamp3 = document.getElementById('rgb-display-samp3');
+    const rgbDisplaySamp4 = document.getElementById('rgb-display-samp4');
+    const popup          = document.getElementById('popup');
+    const popupTitle     = document.getElementById('popup-title');
+    const analysisPopup  = document.getElementById('analysisPopup');
+    const analysisMsg    = document.getElementById('analysisMessage');
+    let imageObj         = new Image();
+    let currentPoint     = null; // white, black, ref, samp1, samp2, samp3, samp4
+    // Storage for RGB values
+    let rgbValues = {
+      white: null,
+      black: null,
+      ref: null,
+      samp1: null,
+      samp2: null,
+      samp3: null,
+      samp4: null
+    };
+    // Reference table (maintained for confidence calculation)
+    const referenceTable = [
+      { concentration: 0.001, distance: 1.37813,  std: 0.721668 },
+      { concentration: 0.01,  distance: 3.35443,  std: 1.7526 },
+      { concentration: 0.05,  distance: 5.78455,  std: 1.845159 },
+      { concentration: 0.1,   distance: 12.24817, std: 1.62919 },
+      { concentration: 0.5,   distance: 13.4935,  std: 1.7844   },
+      { concentration: 1,     distance: 17.2858, std: 1.74072  },
+      { concentration: 5,     distance: 20.1474,   std: 1.144311 }
+    ];
+    // Handle image upload
+    imageInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        imageObj.src = evt.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    imageObj.onload = () => {
+      // Show thumbnail in the upload button
+      uploadButton.innerHTML = '';
+      uploadButton.appendChild(imageInput);
+      imageInput.style.opacity = 0;
+      imageInput.style.zIndex  = 3;
+      const thumb = document.createElement('img');
+      thumb.src   = imageObj.src;
+      uploadButton.appendChild(thumb);
+      const overlayDiv = document.createElement('div');
+      overlayDiv.classList.add('change-overlay');
+      overlayDiv.textContent = "Change Image";
+      uploadButton.appendChild(overlayDiv);
+      actions.classList.remove('hidden');
+      
+      // Reset RGB values when a new image is loaded
+      rgbValues = {
+        white: null,
+        black: null,
+        ref: null,
+        samp1: null,
+        samp2: null,
+        samp3: null,
+        samp4: null
+      };
+      
+      // Reset display texts
+      rgbDisplayWhite.textContent = "White Reference: not captured";
+      rgbDisplayWhite.classList.remove('captured');
+      rgbDisplayBlack.textContent = "Black Reference: not captured";
+      rgbDisplayBlack.classList.remove('captured');
+      rgbDisplayRef.textContent = "Reference Point: not captured";
+      rgbDisplayRef.classList.remove('captured');
+      rgbDisplaySamp1.textContent = "Sample 1: not captured";
+      rgbDisplaySamp1.classList.remove('captured');
+      rgbDisplaySamp2.textContent = "Sample 2: not captured";
+      rgbDisplaySamp2.classList.remove('captured');
+      rgbDisplaySamp3.textContent = "Sample 3: not captured";
+      rgbDisplaySamp3.classList.remove('captured');
+      rgbDisplaySamp4.textContent = "Sample 4: not captured";
+      rgbDisplaySamp4.classList.remove('captured');
+    };
+    // Choose Reference Point
+    document.querySelectorAll('.choose-point').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (!opencvReady) {
+          alert("OpenCV.js is still loading. Please wait a moment and try again.");
+          return;
+        }
+        
+        currentPoint = btn.getAttribute('data-point');
+        popup.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        // Set popup title based on the point type
+        switch(currentPoint) {
+          case 'white':
+            popupTitle.textContent = "Choose White Reference";
+            break;
+          case 'black':
+            popupTitle.textContent = "Choose Black Reference";
+            break;
+          case 'ref':
+            popupTitle.textContent = "Choose Reference Point";
+            break;
+          default:
+            popupTitle.textContent = `Choose Sample ${currentPoint.slice(-1)}`;
+        }
+        // Reset UI elements
+        rgbValueElement.textContent = "RGB: not captured";
+        detectionStatusElement.textContent = "Tap on the image to detect a circle";
+        detectionStatusElement.style.backgroundColor = '';
+        doneButton.disabled = true;
+        detectedCircle = null;
+        manualModeActive = false;
+        manualRadiusInput.style.display = 'none';
+        manualFallback.textContent = "Having trouble finding a circle? Try manual mode";
+        manualFallback.style.fontWeight = 'normal';
+        manualFallback.style.color = '#a8dadc';
+        lastClickedPoint = null;
+        
+        // Clear previous canvas output
+        if (canvasOutput.getContext) {
+          canvasOutput.getContext('2d').clearRect(0, 0, canvasOutput.width, canvasOutput.height);
+        }
+        // Set popup image source
+        popupImage.src = imageObj.src;
+      });
+    });
+    // Done in popup
+    doneButton.addEventListener('click', () => {
+      popup.classList.remove('active');
+      document.body.style.overflow = 'auto';
+      if (!detectedCircle) return;
+      
+      // Store RGB values
+      rgbValues[currentPoint] = detectedCircle.color;
+      
+      // Update display and add captured class
+      let displayElement;
+      switch(currentPoint) {
+        case 'white':
+          displayElement = rgbDisplayWhite;
+          displayElement.textContent = `White Reference: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+        case 'black':
+          displayElement = rgbDisplayBlack;
+          displayElement.textContent = `Black Reference: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+        case 'ref':
+          displayElement = rgbDisplayRef;
+          displayElement.textContent = `Reference Point: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+        case 'samp1':
+          displayElement = rgbDisplaySamp1;
+          displayElement.textContent = `Sample 1: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+        case 'samp2':
+          displayElement = rgbDisplaySamp2;
+          displayElement.textContent = `Sample 2: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+        case 'samp3':
+          displayElement = rgbDisplaySamp3;
+          displayElement.textContent = `Sample 3: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+        case 'samp4':
+          displayElement = rgbDisplaySamp4;
+          displayElement.textContent = `Sample 4: (${detectedCircle.color[0]}, ${detectedCircle.color[1]}, ${detectedCircle.color[2]})`;
+          break;
+      }
+      
+      // Add captured class to highlight the element
+      if (displayElement) {
+        displayElement.classList.add('captured');
+      }
+    });
+    // Close popup if user taps outside it
+    popup.addEventListener('click', (e) => {
+      if (e.target === popup) {
+        popup.classList.remove('active');
+        document.body.style.overflow = 'auto';
+      }
+    });
+    // Analyze button
+    let lastDistances = null;     // store for PDF export
+    let lastConfidences = null;   // store all confidence values
+    let lastConcentrations = null; // store estimated concentrations
+    document.getElementById("image-upload-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      
+      // Check if all required points have been captured
+      if (!rgbValues.white || !rgbValues.black || !rgbValues.ref || 
+          !rgbValues.samp1 || !rgbValues.samp2 || !rgbValues.samp3 || !rgbValues.samp4) {
+        alert("Please capture all reference and sample points before analyzing.");
+        return;
+      }
+      analysisPopup.classList.add('active');
+      analysisMsg.textContent = "Analyzing...";
+      try {
+        // Apply white balancing to all points (Step 2 from LaTeX)
+        const normalizedRef = normalizeRGB(rgbValues.ref, rgbValues.white, rgbValues.black);
+        const normalizedSamp1 = normalizeRGB(rgbValues.samp1, rgbValues.white, rgbValues.black);
+        const normalizedSamp2 = normalizeRGB(rgbValues.samp2, rgbValues.white, rgbValues.black);
+        const normalizedSamp3 = normalizeRGB(rgbValues.samp3, rgbValues.white, rgbValues.black);
+        const normalizedSamp4 = normalizeRGB(rgbValues.samp4, rgbValues.white, rgbValues.black);
+        
+        // Convert normalized RGB to Lab using d3-color
+        const labRef = rgbToLab(normalizedRef);
+        const labSamp1 = rgbToLab(normalizedSamp1);
+        const labSamp2 = rgbToLab(normalizedSamp2);
+        const labSamp3 = rgbToLab(normalizedSamp3);
+        const labSamp4 = rgbToLab(normalizedSamp4);
+        
+        // Calculate Euclidean distances between reference and each sample
+        const distances = {
+          samp1: labDistance(labRef, labSamp1),
+          samp2: labDistance(labRef, labSamp2),
+          samp3: labDistance(labRef, labSamp3),
+          samp4: labDistance(labRef, labSamp4)
+        };
+        
+        // Calculate estimated concentrations
+        const concentrations = {
+          samp1: estimateConcentration(distances.samp1),
+          samp2: estimateConcentration(distances.samp2),
+          samp3: estimateConcentration(distances.samp3),
+          samp4: estimateConcentration(distances.samp4)
+        };
+        
+        // Calculate confidence score for each sample
+        const confidences = {};
+        for (const [samp, distance] of Object.entries(distances)) {
+          // Find closest reference point for confidence calculation
+          let bestMatch = null;
+          let minDiff = Infinity;
+          
+          for (let i = 0; i < referenceTable.length; i++) {
+            const diff = Math.abs(distance - referenceTable[i].distance);
+            if (diff < minDiff) {
+              minDiff = diff;
+              bestMatch = referenceTable[i];
+            }
+          }
+          
+          // Calculate confidence score
+          const z = (distance - bestMatch.distance) / bestMatch.std;
+          confidences[samp] = parseFloat((Math.exp(-0.5 * z * z) * 100).toFixed(2));
+        }
+        
+        // Save for PDF/Share usage
+        lastDistances = distances;
+        lastConfidences = confidences;
+        lastConcentrations = concentrations;
+        
+        // Hide spinner & show success background
+        document.querySelector('.spinner').style.display = 'none';
+        document.querySelector('.analysis-content').classList.add('success');
+        
+        // Create Chart.js bar chart for concentrations (ΔE values)
+        const chartHTML = `
+          <div class="checkmark">✔</div>
+          <h2>Analysis Results</h2>
+          
+          <div class="chart-container">
+            <canvas id="concentrationChart"></canvas>
+          </div>
+          
+          <table class="results-table">
+            <thead>
+              <tr>
+                <th>Sample</th>
+                <th>Euclidean Dist.</th>
+                <th>Concentration (mg/mL)</th>
+                <th>Confidence</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sample 1</td>
+                <td>${distances.samp1.toFixed(2)}</td>
+                <td>${concentrations.samp1.toFixed(3)}</td>
+                <td>${confidences.samp1.toFixed(1)}%</td>
+              </tr>
+              <tr>
+                <td>Sample 2</td>
+                <td>${distances.samp2.toFixed(2)}</td>
+                <td>${concentrations.samp2.toFixed(3)}</td>
+                <td>${confidences.samp2.toFixed(1)}%</td>
+              </tr>
+              <tr>
+                <td>Sample 3</td>
+                <td>${distances.samp3.toFixed(2)}</td>
+                <td>${concentrations.samp3.toFixed(3)}</td>
+                <td>${confidences.samp3.toFixed(1)}%</td>
+              </tr>
+              <tr>
+                <td>Sample 4</td>
+                <td>${distances.samp4.toFixed(2)}</td>
+                <td>${concentrations.samp4.toFixed(3)}</td>
+                <td>${confidences.samp4.toFixed(1)}%</td>
+              </tr>
+            </tbody>
+          </table>
+          
+          <div class="analysis-buttons">
+            <button id="exportReportBtn">
+              <i class="fa fa-floppy-o" aria-hidden="true"></i>
+              Export Report
+            </button>
+            <button id="shareReportBtn">
+              <i class="fa fa-user-md" aria-hidden="true"></i>
+              Share Report
+            </button>
+          </div>
+          
+          <button id="closeAnalysisBtn" class="close-btn">Close</button>
+        `;
+        
+        analysisMsg.innerHTML = chartHTML;
+        
+        // Create concentration chart
+        new Chart(document.getElementById('concentrationChart').getContext('2d'), {
+          type: 'bar',
+          data: {
+            labels: ['Sample 1', 'Sample 2', 'Sample 3', 'Sample 4'],
+            datasets: [{
+              label: 'Euclidean Dist.',
+              data: [
+                distances.samp1,
+                distances.samp2,
+                distances.samp3,
+                distances.samp4
+              ],
+              backgroundColor: [
+                'rgba(42, 157, 143, 0.7)',
+                'rgba(42, 157, 143, 0.7)',
+                'rgba(42, 157, 143, 0.7)',
+                'rgba(42, 157, 143, 0.7)'
+              ],
+              borderColor: [
+                'rgba(26, 108, 81, 1)',
+                'rgba(26, 108, 81, 1)',
+                'rgba(26, 108, 81, 1)',
+                'rgba(26, 108, 81, 1)'
+              ],
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: 'Euclidean Distance'
+                }
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: 'Sample'
+                }
+              }
+            },
+            plugins: {
+              legend: {
+                display: true,
+                position: 'top'
+              }
+            }
+          }
+        });
+        // Close button
+        document.getElementById('closeAnalysisBtn').addEventListener('click', () => {
+          analysisPopup.classList.remove('active');
+          document.querySelector('.spinner').style.display = 'block';
+          document.querySelector('.analysis-content').classList.remove('success');
+          analysisMsg.textContent = 'Analyzing...';
+        });
+        // Export & Share
+        document.getElementById('exportReportBtn').addEventListener('click', exportPDF);
+        document.getElementById('shareReportBtn').addEventListener('click', shareReport);
+      } catch (err) {
+        console.error(err);
+        analysisMsg.textContent = "Error analyzing. Please try again.";
+      }
+    });
+    // PDF export function
+    function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const textLines = [
+        "ImmunoChroma Analysis Report",
+        "",
+        "This report contains colorimetric analysis results.",
+        "Please consult a specialist for interpretation or further advice.",
+        "",
+        "Sample Analysis Results:",
+        `Sample 1: Euclidean Dist: ${lastDistances.samp1.toFixed(2)}, Conc: ${lastConcentrations.samp1.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp1.toFixed(1)}%)`,
+        `Sample 2: Euclidean Dist: ${lastDistances.samp2.toFixed(2)}, Conc: ${lastConcentrations.samp2.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp2.toFixed(1)}%)`,
+        `Sample 3: Euclidean Dist: ${lastDistances.samp3.toFixed(2)}, Conc: ${lastConcentrations.samp3.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp3.toFixed(1)}%)`,
+        `Sample 4: Euclidean Dist: ${lastDistances.samp4.toFixed(2)}, Conc: ${lastConcentrations.samp4.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp4.toFixed(1)}%)`,
+        "",
+        "Analysis Method:",
+        "White-balanced RGB to Lab color space conversion",
+        "Euclidean distance calculation for concentration determination",
+        "OpenCV.js-based circle detection for accurate color sampling"
+      ];
+      doc.setFontSize(12);
+      let yPos = 10;
+      for (let line of textLines) {
+        doc.text(line, 10, yPos);
+        yPos += 10;
+      }
+      doc.save("colorimetric-analysis-report.pdf");
+    }
+    // Share text function (Web Share API)
+    function shareReport() {
+      const shareText = 
+        `ImmunoChroma Analysis Report\n\n` +
+        `Sample Analysis Results:\n` +
+        `Sample 1: Euclidean Dist: ${lastDistances.samp1.toFixed(2)}, Conc: ${lastConcentrations.samp1.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp1.toFixed(1)}%)\n` +
+        `Sample 2: Euclidean Dist: ${lastDistances.samp2.toFixed(2)}, Conc: ${lastConcentrations.samp2.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp2.toFixed(1)}%)\n` +
+        `Sample 3: Euclidean Dist: ${lastDistances.samp3.toFixed(2)}, Conc: ${lastConcentrations.samp3.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp3.toFixed(1)}%)\n` +
+        `Sample 4: Euclidean Dist: ${lastDistances.samp4.toFixed(2)}, Conc: ${lastConcentrations.samp4.toFixed(3)} mg/mL (Confidence: ${lastConfidences.samp4.toFixed(1)}%)\n\n` +
+        `Please consult a specialist for interpretation or further advice.`;
+      if (navigator.share) {
+        navigator.share({
+          title: 'ImmunoChroma Analysis Report',
+          text: shareText
+        }).catch(err => console.error("Share Error:", err));
+      } else {
+        alert("Sharing not supported on this browser.");
+      }
+    }
+    /***********************************************************
+     * 3) Unit Preference Toggle
+     ***********************************************************/
+    let currentUnit = "mg/mL";
+    const unitToggleBtn = document.getElementById('unitToggle');
+    unitToggleBtn.addEventListener('click', () => {
+      if (currentUnit === "mg/mL") {
+        currentUnit = "μg/m";
+        unitToggleBtn.innerHTML = '<i class="fa fa-tint" aria-hidden="true"></i> Unit: μg/m';
+      } else {
+        currentUnit = "mg/mL";
+        unitToggleBtn.innerHTML = '<i class="fa fa-tint" aria-hidden="true"></i> Unit: mg/mL';
+      }
+    });
+    // Restart button
+    const restartBtn = document.getElementById('restartProcess');
+    restartBtn.addEventListener('click', () => {
+      // Reset RGB values
+      rgbValues = {
+        white: null,
+        black: null,
+        ref: null,
+        samp1: null,
+        samp2: null,
+        samp3: null,
+        samp4: null
+      };
+      
+      // Reset display texts and remove "captured" class
+      rgbDisplayWhite.textContent = "White Reference: not captured";
+      rgbDisplayWhite.classList.remove('captured');
+      rgbDisplayBlack.textContent = "Black Reference: not captured";
+      rgbDisplayBlack.classList.remove('captured');
+      rgbDisplayRef.textContent = "Reference Point: not captured";
+      rgbDisplayRef.classList.remove('captured');
+      rgbDisplaySamp1.textContent = "Sample 1: not captured";
+      rgbDisplaySamp1.classList.remove('captured');
+      rgbDisplaySamp2.textContent = "Sample 2: not captured";
+      rgbDisplaySamp2.classList.remove('captured');
+      rgbDisplaySamp3.textContent = "Sample 3: not captured";
+      rgbDisplaySamp3.classList.remove('captured');
+      rgbDisplaySamp4.textContent = "Sample 4: not captured";
+      rgbDisplaySamp4.classList.remove('captured');
+      
+      alert("All reference and sample points have been reset.");
+    });
+  </script>
+</body>
+</html>
